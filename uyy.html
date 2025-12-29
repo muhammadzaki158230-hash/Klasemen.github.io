@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Klasemen MLBB - Bracket Mode</title>
+    <style>
+        body { 
+            font-family: 'Segoe UI', sans-serif; 
+            background-color: #0f172a; 
+            color: white; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            padding: 20px; 
+        }
+
+        .container { width: 100%; max-width: 900px; }
+        
+        h2 { 
+            color: #fbbf24; 
+            text-transform: uppercase; 
+            text-align: center; 
+            margin-bottom: 25px; 
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5); 
+        }
+
+        .table-container { 
+            background: #1e293b; 
+            border-radius: 12px; 
+            overflow: hidden; 
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5); 
+            border: 1px solid #334155;
+        }
+
+        table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            text-align: center; 
+        }
+
+        th { 
+            background-color: #2563eb; 
+            color: white; 
+            padding: 15px; 
+            font-size: 14px; 
+            border-bottom: 2px solid #334155; 
+        }
+
+        td { 
+            padding: 12px; 
+            border-bottom: 1px solid #334155; 
+            font-size: 15px; 
+        }
+
+        /* --- STYLING BRACKET SESUAI PERINTAH --- */
+        .upper-bracket { background-color: rgba(37, 99, 235, 0.4) !important; } /* Biru No 1-4 */
+        .lower-bracket { background-color: rgba(251, 191, 36, 0.3) !important; } /* Kuning No 5-8 */
+        .eliminated { background-color: rgba(239, 68, 68, 0.3) !important; }    /* Merah No 9-10 */
+
+        tbody tr:hover { background-color: rgba(255, 255, 255, 0.1) !important; }
+        .pts { color: #fbbf24; font-weight: bold; }
+
+        /* Panel Admin */
+        .admin-box { 
+            margin-top: 40px; 
+            padding: 20px; 
+            background: #1a2232; 
+            border-radius: 10px; 
+            border: 1px dashed #475569; 
+            width: 100%; 
+            box-sizing: border-box; 
+        }
+
+        .input-group { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+        input, select, button { padding: 10px; border-radius: 5px; border: 1px solid #334155; background: #0f172a; color: white; }
+        .btn-update { background: #22c55e; border: none; font-weight: bold; cursor: pointer; }
+        .btn-reset { background: #ef4444; border: none; font-weight: bold; cursor: pointer; margin-top: 10px; width: 100%; }
+        
+        /* Legend Box */
+        .legend { margin-bottom: 15px; display: flex; gap: 15px; font-size: 12px; }
+        .legend-item { display: flex; align-items: center; gap: 5px; }
+        .dot { width: 12px; height: 12px; border-radius: 3px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>🏆 KLASEMEN TURNAMEN MLBB 🏆</h2>
+    
+    <div class="legend">
+        <div class="legend-item"><span class="dot" style="background: rgba(37, 99, 235, 0.8)"></span> Upper Bracket (1-4)</div>
+        <div class="legend-item"><span class="dot" style="background: rgba(251, 191, 36, 0.8)"></span> Lower Bracket (5-8)</div>
+        <div class="legend-item"><span class="dot" style="background: rgba(239, 68, 68, 0.8)"></span> Eliminated (9-10)</div>
+    </div>
+
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>No</th>
+                    <th>Nama Tim</th>
+                    <th>Match</th>
+                    <th>Win</th>
+                    <th>Lose</th>
+                    <th>Total Skor</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+        </table>
+    </div>
+
+    <div class="admin-box">
+        <h4 style="margin-top:0; color: #94a3b8;">🛠 Update Skor (Admin Only)</h4>
+        <div class="input-group">
+            <select id="teamSelect"><option value="">-- Pilih Tim --</option></select>
+            <input type="number" id="winAdd" placeholder="+ Win">
+            <input type="number" id="loseAdd" placeholder="+ Lose">
+            <button class="btn-update" onclick="checkAuth()">Update</button>
+        </div>
+        <button class="btn-reset" onclick="resetData()">RESET SEMUA DATA</button>
+    </div>
+</div>
+
+<script>
+    const defaultTeams = [
+        { name: "Anakurangajar", match: 2, win: 2, lose: 0, score: 4 },
+        { name: "Ordinary People", match: 2, win: 2, lose: 0, score: 4 },
+        { name: "Happy Party", match: 2, win: 2, lose: 0, score: 4 },
+        { name: "Dragsistem", match: 2, win: 1, lose: 1, score: 2 },
+        { name: "Kadut Marugul", match: 2, win: 1, lose: 1, score: 2 },
+        { name: "Sambelhejo", match: 2, win: 1, lose: 1, score: 2 },
+        { name: "Tim Kamera Belakang", match: 2, win: 1, lose: 1, score: 2 },
+        { name: "Anomali", match: 2, win: 0, lose: 2, score: 0 },
+        { name: "Ashabulion", match: 2, win: 0, lose: 2, score: 0 },
+        { name: "Wakanda Empire", match: 2, win: 0, lose: 2, score: 0 }
+    ];
+
+    let teams = JSON.parse(localStorage.getItem('mlbb_data')) || defaultTeams;
+    const PASS_ADMIN = "Orangsukses0203";
+
+    function renderTable() {
+        // Sortir otomatis berdasarkan skor
+        teams.sort((a, b) => b.score - a.score || b.win - a.win);
+        
+        const tbody = document.getElementById('tableBody');
+        const select = document.getElementById('teamSelect');
+        tbody.innerHTML = '';
+        
+        teams.forEach((team, index) => {
+            let rank = index + 1;
+            let bracketClass = "";
+
+            // LOGIKA BRACKET
+            if (rank <= 4) {
+                bracketClass = "upper-bracket";
+            } else if (rank <= 8) {
+                bracketClass = "lower-bracket";
+            } else {
+                bracketClass = "eliminated";
+            }
+
+            tbody.innerHTML += `
+                <tr class="${bracketClass}">
+                    <td>${rank}</td>
+                    <td style="text-align:left; padding-left:25px;">${team.name}</td>
+                    <td>${team.match}</td>
+                    <td>${team.win}</td>
+                    <td>${team.lose}</td>
+                    <td class="pts">${team.score}</td>
+                </tr>
+            `;
+        });
+
+        // Update dropdown pilihan tim
+        if(select.options.length <= 1) {
+            teams.forEach(t => {
+                let opt = document.createElement('option');
+                opt.value = t.name; opt.textContent = t.name;
+                select.appendChild(opt);
+            });
+        }
+    }
+
+    function checkAuth() {
+        const pw = prompt("Masukkan Password Admin:");
+        if(pw === PASS_ADMIN) { doUpdate(); } else { alert("Password Salah!"); }
+    }
+
+    function doUpdate() {
+        const name = document.getElementById('teamSelect').value;
+        const w = parseInt(document.getElementById('winAdd').value) || 0;
+        const l = parseInt(document.getElementById('loseAdd').value) || 0;
+        if(!name) return alert("Pilih tim!");
+
+        const team = teams.find(t => t.name === name);
+        team.win += w;
+        team.lose += l;
+        team.match += (w + l);
+        team.score = (team.win * 2);
+
+        localStorage.setItem('mlbb_data', JSON.stringify(teams));
+        location.reload(); 
+    }
+
+    function resetData() {
+        if(prompt("Password Admin:") === PASS_ADMIN) {
+            if(confirm("Reset semua data?")) {
+                localStorage.removeItem('mlbb_data');
+                location.reload();
+            }
+        }
+    }
+
+    renderTable();
+</script>
+</body>
+</html> 
